@@ -1,7 +1,5 @@
 package com.sunmi.androidwebsocketdemo;
 
-import androidx.appcompat.app.AppCompatActivity;
-
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
@@ -10,6 +8,16 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
+import androidx.appcompat.app.AppCompatActivity;
+
+import org.java_websocket.WebSocket;
+import org.java_websocket.client.WebSocketClient;
+import org.java_websocket.handshake.ClientHandshake;
+import org.java_websocket.handshake.ServerHandshake;
+import org.java_websocket.server.WebSocketServer;
+
+import java.net.InetSocketAddress;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Date;
 
@@ -40,6 +48,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private WebSocketServerThread serverThread;
     private WebSocketClientThread clientThread;
 
+    private boolean isServer = false;
+    private WebSocketClient client;
+    private TestServer testServer;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -49,7 +61,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
 
-    private void getPermission(){
+    private void getPermission() {
         ArrayList<String> requestPermissionArr = new ArrayList<>();
 
         int p1 = checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION);
@@ -110,23 +122,109 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void clickSend() {
-        if(serverThread.self != null){
-            serverThread.send("ok I understand, there is nothing I can do with it".getBytes());
-            return;
+//        if(serverThread.self != null){
+//            serverThread.send("ok I understand, there is nothing I can do with it".getBytes());
+//            return;
+//        }
+//        if(clientThread.self != null){
+//            clientThread.send("this is my september again".getBytes());
+//            return;
+//        }
+//        uiLog("no socket ready");
+        if(isServer){
+            testServer.sendMessage(null, null);
+        }else {
+            client.send("I wanna something just like this");
         }
-        if(clientThread.self != null){
-            clientThread.send("this is my september again".getBytes());
-            return;
-        }
-        uiLog("no socket ready");
     }
 
     private void clickClient() {
-        clientThread.start();
+//        clientThread.start();
+        try {
+            client = new WebSocketClient(new URI("ws://192.168.3.13:11011")) {
+                @Override
+                public void onOpen(ServerHandshake handshakedata) {
+                    uiLog("onOpen");
+                }
+
+                @Override
+                public void onMessage(String message) {
+                    uiLog("onMessage: " + message);
+                }
+
+                @Override
+                public void onClose(int code, String reason, boolean remote) {
+                    uiLog("onClose, code-->" + code + " reason-->" + reason);
+                }
+
+                @Override
+                public void onError(Exception ex) {
+                    uiLog("onError: " + ex.toString());
+                }
+            };
+            client.connect();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        isServer = false;
     }
 
-    private void clickServer(){
-        serverThread.start();
+
+    private void clickServer() {
+//        serverThread.start();
+        // 192.168.3.13
+        testServer = new TestServer(11011);
+        testServer.start();
+        isServer = true;
+    }
+
+    public class TestServer extends WebSocketServer {
+
+        private TestServer serverSocket;
+
+        private WebSocket webSocketTheOne;
+
+        private static final String TAG = "TestServer";
+
+        public TestServer(int port) {
+            super(new InetSocketAddress(port));
+        }
+
+        @Override
+        public void onOpen(WebSocket conn, ClientHandshake handshake) {
+            //开始连接
+            uiLog("onOpen");
+            webSocketTheOne = conn;
+        }
+
+        @Override
+        public void onClose(WebSocket conn, int code, String reason, boolean remote) {
+            //服务器关闭
+            uiLog("onClose");
+        }
+
+        @Override
+        public void onMessage(WebSocket conn, String message) {
+            //接收消息，做逻辑处理，这里我直接重新返回消息
+            uiLog("onMessage: " + message);
+        }
+
+        @Override
+        public void onError(WebSocket conn, Exception ex) {
+            //异常
+            uiLog("onError: " + ex.toString());
+        }
+
+        @Override
+        public void onStart() {
+            uiLog("onStart");
+        }
+
+        public void sendMessage(WebSocket socket, String message) {
+            webSocketTheOne.send("She said where do you wanna go?");
+        }
+
     }
 
 }
