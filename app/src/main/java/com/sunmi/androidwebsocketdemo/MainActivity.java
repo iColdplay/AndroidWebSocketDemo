@@ -16,9 +16,11 @@ import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.handshake.ServerHandshake;
 import org.java_websocket.server.WebSocketServer;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
@@ -131,10 +133,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 //            return;
 //        }
 //        uiLog("no socket ready");
-        if(isServer){
+        if (isServer) {
             testServer.sendMessage(null, null);
-        }else {
-            client.send("I wanna something just like this");
+        } else {
+            StringBuilder stringBuilder = new StringBuilder();
+            for (int i = 0; i < 1024 * 10; i++) {
+                stringBuilder.append("a");
+            }
+            uiLog("message length: " + stringBuilder.toString().length());
+            client.send(stringBuilder.toString());
         }
     }
 
@@ -150,11 +157,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 @Override
                 public void onMessage(String message) {
                     uiLog("onMessage: " + message);
+
                 }
 
                 @Override
                 public void onClose(int code, String reason, boolean remote) {
                     uiLog("onClose, code-->" + code + " reason-->" + reason);
+                    client.connect();
                 }
 
                 @Override
@@ -163,6 +172,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 }
             };
             client.connect();
+            client.setConnectionLostTimeout(3000);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -208,6 +218,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         public void onMessage(WebSocket conn, String message) {
             //接收消息，做逻辑处理，这里我直接重新返回消息
             uiLog("onMessage: " + message);
+            uiLog("message length:" + message.length());
         }
 
         @Override
@@ -227,4 +238,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if(testServer != null){
+            try {
+                testServer.stop();
+            } catch (IOException e) {
+                e.printStackTrace();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        System.exit(0);
+    }
 }
